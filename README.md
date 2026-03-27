@@ -6,7 +6,7 @@ Tres visualitzacions interactives desenvolupades amb D3.js i HTML/CSS per a la P
 
 ## 1. Treemap — Tots els Municipis de Catalunya (2025)
 
-![Treemap Població Catalunya](screenshots/01_treemap.png)
+![Treemap Població Catalunya](01_treemap.png)
 
 Cada rectangle representa un municipi de Catalunya. La mida és proporcional a la seva població i els colors identifiquen la comarca. Inclou tooltip interactiu i llegenda de comarques.
 
@@ -24,7 +24,7 @@ Cada rectangle representa un municipi de Catalunya. La mida és proporcional a l
 
 ## 2. Icon Chart — Medalles Olímpiques París 2024
 
-![Icon Chart Medalles París 2024](screenshots/02_iconchart.png)
+![Icon Chart Medalles París 2024](02_iconchart.png)
 
 Gràfic de pictogrames (estil ISOTYPE) que mostra les medalles d'or, plata i bronze dels 10 països amb més medalles als Jocs Olímpics de París 2024. Cada icona representa una medalla; els colors distingeixen el tipus.
 
@@ -42,7 +42,7 @@ Gràfic de pictogrames (estil ISOTYPE) que mostra les medalles d'or, plata i bro
 
 ## 3. Marimekko — Mix d'Energia Elèctrica Europa 2023
 
-![Marimekko Energia Europa](screenshots/03_marimekko.png)
+![Marimekko Energia Europa](03_marimekko.png)
 
 Gràfic Marimekko (mosaic) on cada columna és un país europeu. L'**amplada** de la columna és proporcional a la generació total (TWh) i l'**alçada** de cada franja mostra el percentatge de cada font d'energia renovable. Tooltip interactiu i llegenda de fonts energètiques.
 
