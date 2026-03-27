@@ -7,40 +7,19 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    background: #f0f2f5;
-    color: #1a1a1a;
-    padding: 24px;
-  }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; padding: 24px; }
 
   #chart-container {
     background: white;
     border-radius: 10px;
-    padding: 28px 32px;
+    padding: 20px 24px 16px;
     box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-    max-width: 900px;
   }
 
-  /* ── HEADER ── */
-  header {
-    margin-bottom: 24px;
-    padding-bottom: 18px;
-    border-bottom: 2px solid #1a1a1a;
-  }
-  h1 {
-    font-size: 26px;
-    font-weight: 700;
-    letter-spacing: -0.3px;
-    line-height: 1.2;
-    margin-bottom: 8px;
-  }
-  .subtitle {
-    font-size: 14px;
-    color: #555;
-    line-height: 1.5;
-    max-width: 560px;
-  }
+  .header { margin-bottom: 16px; }
+  h1 { font-size: 22px; color: #1a1a2e; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: #555; line-height: 1.5; }
+  .source { font-size: 11px; color: #888; margin-top: 4px; }
 
   /* ── LLEGENDA ── */
   .legend {
@@ -160,20 +139,16 @@
     white-space: nowrap;
   }
 
-  /* ── FONT ── */
-  footer {
-    margin-top: 24px;
-    font-size: 11px;
-    color: #aaa;
-  }
+
 </style>
 </head>
 <body>
 
-<header>
+<div class="header">
   <h1>Medalles Olímpiques París 2024</h1>
   <div class="subtitle">Top 10 països per or. Cada cercle representa una medalla.</div>
-</header>
+  <div class="source">Font: Wikipedia — 2024 Summer Olympics medal table · Olympics.com</div>
+</div>
 
 <div id="chart-container">
 
@@ -186,7 +161,6 @@
 
 <div id="chart"></div>
 
-<footer>Font: Wikipedia — 2024 Summer Olympics medal table · Olympics.com</footer>
 
 </div><!-- /chart-container -->
 <div class="tooltip" id="tooltip"></div>
