@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Treemap — Tots els municipis de Catalunya (2025)</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; padding: 20px; }
+  h1 { font-size: 21px; color: #1a1a2e; margin-bottom: 5px; }
+  .subtitle { font-size: 13px; color: #555; line-height: 1.5; margin-bottom: 3px; }
+  .source { font-size: 11px; color: #999; margin-bottom: 14px; }
+  #chart-container { background: white; border-radius: 10px; padding: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+  .tooltip {
+    position: fixed; background: rgba(15,15,35,0.93); color: white;
+    padding: 9px 13px; border-radius: 8px; font-size: 13px;
+    pointer-events: none; display: none; z-index: 999;
+    line-height: 1.65; box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid #eee; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 10.5px; color: #444; cursor: default; }
+  .legend-color { width: 11px; height: 11px; border-radius: 2px; flex-shrink: 0; }
+  .info-bar { display: flex; gap: 20px; margin-bottom: 10px; font-size: 12px; color: #666; }
+  .info-bar strong { color: #333; }
+</style>
+</head>
+<body>
+<h1>Treemap — Tots els Municipis de Catalunya (2025)</h1>
+<p class="subtitle">Cada rectangle = un municipi. La mida és proporcional a la població. Els colors identifiquen la comarca. Passa el ratolí per veure els detalls.</p>
+<p class="source">Font: Idescat — Padró Municipal d'Habitants via API EMEX (api.idescat.cat) · Any 2025 · 947 municipis · 43 comarques · Total: 8.124.126 hab.</p>
+<div class="info-bar">
+  <span>Total municipis: <strong>947</strong></span>
+  <span>Comarques: <strong>43</strong></span>
+  <span>Població total: <strong>8.124.126 hab.</strong></span>
+</div>
+<div id="chart-container">
+  <div id="chart"></div>
+  <div class="legend" id="legend"></div>
+</div>
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+const csvData = `comarca,municipality,population
+Alt Camp,Aiguamúrcia,1002
+Alt Camp,Alcover,5357
+Alt Camp,Alió,499
+Alt Camp,Bràfim,705
+Alt Camp,Cabra del Camp,1387
+Alt Camp,Figuerola del Camp,343
+"Alt Camp","Garidells, els",211
+"Alt Camp","Masó, la",308
+"Alt Camp","Milà, el",194
+Alt Camp,Montferri,509
+Alt Camp,Mont-ral,176
+Alt Camp,Nulles,556
+"Alt Camp","Pla de Santa Maria, el",2412
+"Alt Camp","Pont d'Armentera, el",507
+Alt Camp,Puigpelat,1225
+Alt Camp,Querol,614
+"Alt Camp","Riba, la",574
+Alt Camp,Rodonyà,518
+"Alt Camp","Rourell, el",385
+Alt Camp,Vallmoll,1997
+Alt Camp,Valls,25540
+Alt Camp,Vilabella,731
+Alt Camp,Vila-rodona,1388
+Alt Empordà,Agullana,881
+Alt Empordà,Albanyà,158
+"Alt Empordà","Far d'Empordà, el",624
+"Alt Empordà","Armentera, l'",1076
+Alt Empordà,Avinyonet de Puigventós,1669
+"Alt Empordà","Vajol, la",110
+Alt Empordà,Bàscara,1048
+Alt Empordà,Borrassà,802
+Alt Empordà,Boadella i les Escaules,264
+Alt Empordà,Cabanes,998
+Alt Empordà,Cabanelles,286
+Alt Empordà,Cadaqués,2906
+Alt Empordà,Cantallops,367
+Alt Empordà,Capmany,677
+Alt Empordà,Castelló d'Empúries,12275
+Alt Empordà,Cistella,285
+Alt Empordà,Siurana,188
+Alt Empordà,Colera,489
+Alt Empordà,Darnius,561
+"Alt Empordà","Escala, l'",10641
+Alt Empordà,Espolla,399
+Alt Empordà,Figueres,49556
+Alt Empordà,Fortià,789
+Alt Empordà,Garrigàs,479
+Alt Empordà,Garriguella,989
+"Alt Empordà","Jonquera, la",3410
+Alt Empordà,Lladó,823
+Alt Empordà,Llançà,5033
+Alt Empordà,Llers,1268
+Alt Empordà,Masarac i Vilarnadal,291
+Alt Empordà,Maçanet de Cabrenys,768
+Alt Empordà,Mollet de Peralada,202
+Alt Empordà,Navata,1504
+Alt Empordà,Ordis,411
+Alt Empordà,Palau de Santa Eulàlia,124
+Alt Empordà,Palau-saverdera,1524
+Alt Empordà,Pau,558
+Alt Empordà,Pedret i Marzà,208
+Alt Empordà,Peralada,2087
+Alt Empordà,Pont de Molins,586
+Alt Empordà,Pontós,295
+Alt Empordà,Portbou,1132
+"Alt Empordà","Port de la Selva, el",1055
+Alt Empordà,Rabós,236
+Alt Empordà,Riumors,258
+Alt Empordà,Roses,20175
+Alt Empordà,Sant Climent Sescebes,691
+Alt Empordà,Sant Llorenç de la Muga,247
+Alt Empordà,Sant Miquel de Fluvià,858
+Alt Empordà,Sant Mori,167
+Alt Empordà,Sant Pere Pescador,2285
+"Alt Empordà","Santa Llogaia d'Àlguema",400
+"Alt Empordà","Saus, Camallera i Llampaies",908
+"Alt Empordà","Selva de Mar, la",223
+Alt Empordà,Terrades,337
+Alt Empordà,Torroella de Fluvià,774
+Alt Empordà,Ventalló,922
+Alt Empordà,Vilabertran,962
+Alt Empordà,Viladamat,499
+Alt Empordà,Vilafant,5664
+Alt Empordà,Vilaür,163
+Alt Empordà,Vilajuïga,1180
+Alt Empordà,Vilamacolum,401
+Alt Empordà,Vilamalla,1202
+Alt Empordà,Vilamaniscle,185
+Alt Empordà,Vilanant,405
+Alt Empordà,Vila-sacra,879
+Alt Empordà,Biure,227
+Alt Penedès,Avinyonet del Penedès,1787
+"Alt Penedès","Cabanyes, les",1064
+Alt Penedès,Castellet i la Gornal,2773
+Alt Penedès,Castellví de la Marca,1718
+Alt Penedès,Font-rubí,1436
+Alt Penedès,Gelida,8192
+"Alt Penedès","Granada, la",2281
+Alt Penedès,Mediona,2664
+Alt Penedès,Olèrdola,3953
+Alt Penedès,Olesa de Bonesvalls,2134
+Alt Penedès,Pacs del Penedès,934
+"Alt Penedès","Pla del Penedès, el",1392
+Alt Penedès,Pontons,515
+Alt Penedès,Puigdàlber,621
+Alt Penedès,Sant Cugat Sesgarrigues,1037
+Alt Penedès,Sant Llorenç d'Hortons,2621
+Alt Penedès,Sant Martí Sarroca,3476
+Alt Penedès,Sant Pere de Riudebitlles,2512
+Alt Penedès,Sant Quintí de Mediona,2585
+Alt Penedès,Sant Sadurní d'Anoia,12930
+Alt Penedès,Santa Fe del Penedès,367
+Alt Penedès,Santa Margarida i els Monjos,7775
+Alt Penedès,Subirats,3287
+Alt Penedès,Torrelavit,1575
+Alt Penedès,Torrelles de Foix,2751
+Alt Penedès,Vilobí del Penedès,1157
+Alt Penedès,Vilafranca del Penedès,42561
+Alt Urgell,Alàs i Cerc,320
+"Alt Urgell","Pont de Bar, el",167
+Alt Urgell,Arsèguel,85
+Alt Urgell,Bassella,215
+Alt Urgell,Cabó,87
+Alt Urgell,Cava,38
+Alt Urgell,Coll de Nargó,585
+Alt Urgell,Estamariu,134
+Alt Urgell,Montferrer i Castellbò,1161
+Alt Urgell,Oliana,1869
+Alt Urgell,Organyà,851
+Alt Urgell,Peramola,339
+Alt Urgell,Ribera d'Urgellet,982
+"Alt Urgell","Seu d'Urgell, la",13003
+"Alt Urgell","Valls de Valira, les",848
+"Alt Urgell","Valls d'Aguilar, les",259
+Alt Urgell,Fígols i Alinyà,235
+"Alt Urgell","Vansa i Fórnols, la",189
+Alt Urgell,Josa i Tuixén,110
+"Alta Ribagorça","Vall de Boí, la",1129
+"Alta Ribagorça","Pont de Suert, el",2425
+Alta Ribagorça,Vilaller,497
+Anoia,Argençola,245
+Anoia,Bellprat,69
+"Anoia","Bruc, el",2294
+Anoia,Cabrera d'Anoia,1777
+Anoia,Calaf,3627
+Anoia,Calonge de Segarra,179
+Anoia,Capellades,5598
+Anoia,Carme,860
+Anoia,Castellfollit de Riubregós,153
+Anoia,Castellolí,670
+Anoia,Copons,352
+Anoia,Igualada,42449
+Anoia,Jorba,849
+"Anoia","Llacuna, la",961
+Anoia,Masquefa,10111
+Anoia,Montmaneu,182
+Anoia,Òdena,3756
+Anoia,Orpí,176
+Anoia,Piera,17884
+"Anoia","Hostalets de Pierola, els",3254
+"Anoia","Pobla de Claramunt, la",2350
+"Anoia","Prats de Rei, els",553
+Anoia,Pujalt,205
+Anoia,Rubió,228
+Anoia,Sant Pere Sallavinera,177
+Anoia,Sant Martí de Tous,1269
+Anoia,Sant Martí Sesgueioles,353
+Anoia,Santa Margarida de Montbui,10601
+Anoia,Santa Maria de Miralles,144
+"Anoia","Torre de Claramunt, la",4154
+Anoia,Vallbona d'Anoia,1420
+Anoia,Veciana,170
+Anoia,Vilanova del Camí,12886
+Aran,Naut Aran,1893
+Aran,Arres,58
+Aran,Bausen,62
+"Aran","Bòrdes, Es",281
+Aran,Bossòst,1178
+Aran,Canejan,96
+Aran,Les,1052
+Aran,Vielha e Mijaran,5857
+Aran,Vilamòs,174
+Bages,Aguilar de Segarra,293
+Bages,Artés,6211
+Bages,Avinyó,2325
+Bages,Balsareny,3354
+Bages,Callús,2193
+Bages,Cardona,4540
+Bages,Castellbell i el Vilar,4163
+Bages,Castellfollit del Boix,469
+Bages,Castellgalí,2411
+Bages,Castellnou de Bages,1471
+Bages,Fonollosa,1571
+Bages,Gaià,174
+Bages,Sant Salvador de Guardiola,3596
+Bages,Manresa,80692
+Bages,Monistrol de Montserrat,3233
+Bages,Mura,234
+Bages,Navarcles,6277
+Bages,Navàs,6242
+Bages,Rajadell,598
+"Bages","Pont de Vilomara i Rocafort, el",4201
+Bages,Sallent,7043
+Bages,Santpedor,7739
+Bages,Sant Feliu Sasserra,634
+Bages,Sant Fruitós de Bages,9324
+Bages,Sant Joan de Vilatorrada,11109
+Bages,Sant Mateu de Bages,640
+Bages,Marganell,311
+Bages,Sant Vicenç de Castellet,10167
+Bages,Súria,6196
+Bages,Talamanca,209
+"Baix Camp","Albiol, l'",556
+"Baix Camp","Aleixar, l'",1026
+Baix Camp,Alforja,2031
+Baix Camp,Almoster,1383
+Baix Camp,Arbolí,138
+"Baix Camp","Argentera, l'",139
+"Baix Camp","Borges del Camp, les",2313
+Baix Camp,Botarell,1156
+Baix Camp,Cambrils,37068
+Baix Camp,Capafonts,101
+Baix Camp,Castellvell del Camp,3001
+Baix Camp,Colldejou,157
+Baix Camp,Duesaigües,219
+"Baix Camp","Febró, la",35
+Baix Camp,Maspujols,917
+Baix Camp,Montbrió del Camp,3167
+Baix Camp,Mont-roig del Camp,14652
+Baix Camp,Prades,644
+Baix Camp,Pratdip,784
+Baix Camp,Reus,111911
+Baix Camp,Riudecanyes,1379
+Baix Camp,Riudecols,1280
+Baix Camp,Riudoms,6927
+"Baix Camp","Selva del Camp, la",5751
+Baix Camp,Vandellòs i l'Hospitalet de l'Infant,7151
+Baix Camp,Vilanova d'Escornalbou,615
+Baix Camp,Vilaplana,558
+Baix Camp,Vinyols i els Arcs,2470
+Baix Ebre,Aldover,910
+Baix Ebre,Alfara de Carles,355
+"Baix Ebre","Ametlla de Mar, l'",7436
+Baix Ebre,Benifallet,708
+Baix Ebre,Xerta,1186
+Baix Ebre,Paüls,554
+"Baix Ebre","Perelló, el",3005
+Baix Ebre,Roquetes,8606
+Baix Ebre,Tivenys,952
+Baix Ebre,Tortosa,36258
+Baix Ebre,Deltebre,12074
+Baix Ebre,Camarles,3499
+"Baix Ebre","Aldea, l'",4725
+"Baix Ebre","Ampolla, l'",3809
+Baix Empordà,Albons,852
+Baix Empordà,Begur,4286
+Baix Empordà,Bellcaire d'Empordà,722
+"Baix Empordà","Bisbal d'Empordà, la",11731
+Baix Empordà,Calonge i Sant Antoni,12268
+"Baix Empordà","Castell d'Aro, Platja d'Aro i s'Agaró",12889
+Baix Empordà,Colomers,206
+Baix Empordà,Corçà,1285
+Baix Empordà,Foixà,298
+Baix Empordà,Fontanilles,170
+Baix Empordà,Garrigoles,183
+Baix Empordà,Gualta,437
+Baix Empordà,Jafre,384
+Baix Empordà,Mont-ras,1690
+Baix Empordà,Palafrugell,24556
+Baix Empordà,Palamós,18921
+Baix Empordà,Palau-sator,320
+Baix Empordà,Pals,2552
+Baix Empordà,Parlavà,435
+"Baix Empordà","Pera, la",449
+Baix Empordà,Regencós,274
+Baix Empordà,Rupià,323
+Baix Empordà,Sant Feliu de Guíxols,23060
+Baix Empordà,Santa Cristina d'Aro,5972
+Baix Empordà,Serra de Daró,241
+"Baix Empordà","Tallada d'Empordà, la",485
+Baix Empordà,Torrent,181
+Baix Empordà,Torroella de Montgrí,12507
+Baix Empordà,Ultramort,218
+Baix Empordà,Ullà,1256
+Baix Empordà,Ullastret,252
+Baix Empordà,Vall-llobrega,902
+Baix Empordà,Verges,1160
+Baix Empordà,Vilopriu,220
+"Baix Empordà","Cruïlles, Monells i Sant Sadurní de l'Heura",1347
+Baix Empordà,Forallac,1786
+Baix Llobregat,Abrera,13207
+Baix Llobregat,Begues,7545
+Baix Llobregat,Castelldefels,69689
+Baix Llobregat,Castellví de Rosanes,2166
+Baix Llobregat,Cervelló,9726
+Baix Llobregat,Collbató,4820
+Baix Llobregat,Corbera de Llobregat,16044
+Baix Llobregat,Cornellà de Llobregat,92255
+Baix Llobregat,Esparreguera,22639
+Baix Llobregat,Esplugues de Llobregat,48424
+Baix Llobregat,Gavà,48181
+Baix Llobregat,Martorell,28989
+Baix Llobregat,Molins de Rei,27291
+Baix Llobregat,Olesa de Montserrat,25000
+Baix Llobregat,Pallejà,11976
+"Baix Llobregat","Papiol, el",4404
+"Baix Llobregat","Prat de Llobregat, el",66251
+Baix Llobregat,Sant Andreu de la Barca,27069
+Baix Llobregat,Sant Boi de Llobregat,85317
+Baix Llobregat,Sant Climent de Llobregat,4187
+Baix Llobregat,Sant Esteve Sesrovires,8112
+Baix Llobregat,Sant Feliu de Llobregat,46688
+Baix Llobregat,Sant Joan Despí,35811
+Baix Llobregat,Sant Just Desvern,21045
+Baix Llobregat,Santa Coloma de Cervelló,8275
+Baix Llobregat,Sant Vicenç dels Horts,28760
+Baix Llobregat,Torrelles de Llobregat,6162
+Baix Llobregat,Vallirana,16239
+Baix Llobregat,Viladecans,67536
+"Baix Llobregat","Palma de Cervelló, la",3059
+Baix Penedès,Albinyana,2718
+"Baix Penedès","Arboç, l'",5701
+Baix Penedès,Banyeres del Penedès,3392
+Baix Penedès,Bellvei,2464
+"Baix Penedès","Bisbal del Penedès, la",4270
+Baix Penedès,Bonastre,778
+Baix Penedès,Calafell,32429
+Baix Penedès,Cunit,16304
+Baix Penedès,Llorenç del Penedès,2426
+Baix Penedès,Masllorenç,568
+"Baix Penedès","Montmell, el",1945
+Baix Penedès,Sant Jaume dels Domenys,2819
+Baix Penedès,Santa Oliva,3711
+"Baix Penedès","Vendrell, el",41195
+Barcelonès,Badalona,230642
+Barcelonès,Barcelona,1713247
+"Barcelonès","Hospitalet de Llobregat, l'",292161
+Barcelonès,Sant Adrià de Besòs,38980
+Barcelonès,Santa Coloma de Gramenet,123250
+Berguedà,Avià,2263
+Berguedà,Bagà,2167
+Berguedà,Berga,17539
+Berguedà,Borredà,434
+Berguedà,Capolat,93
+Berguedà,Casserres,1665
+Berguedà,Castellar del Riu,151
+Berguedà,Castellar de n'Hug,166
+Berguedà,Castell de l'Areny,68
+"Berguedà","Espunyola, l'",260
+Berguedà,Fígols,41
+Berguedà,Gironella,5082
+Berguedà,Gisclareny,28
+Berguedà,Guardiola de Berguedà,962
+Berguedà,Montclar,133
+Berguedà,Montmajor,471
+"Berguedà","Nou de Berguedà, la",163
+Berguedà,Olvan,926
+"Berguedà","Pobla de Lillet, la",1106
+Berguedà,Puig-reig,4558
+"Berguedà","Quar, la",44
+Berguedà,Sagàs,153
+Berguedà,Saldes,301
+Berguedà,Sant Jaume de Frontanyà,25
+Berguedà,Santa Maria de Merlès,179
+Berguedà,Cercs,1236
+Berguedà,Vallcebre,260
+Berguedà,Vilada,430
+Berguedà,Viver i Serrateix,178
+Berguedà,Sant Julià de Cerdanyola,234
+Berguedà,Gósol,207
+Cerdanya,Alp,1724
+Cerdanya,Bolvir,493
+Cerdanya,Das,261
+Cerdanya,Fontanals de Cerdanya,516
+Cerdanya,Ger,501
+Cerdanya,Guils de Cerdanya,559
+Cerdanya,Isòvol,314
+Cerdanya,Llívia,1572
+Cerdanya,Meranges,111
+Cerdanya,Puigcerdà,10053
+Cerdanya,Urús,201
+Cerdanya,Bellver de Cerdanya,2289
+Cerdanya,Lles de Cerdanya,294
+Cerdanya,Montellà i Martinet,605
+Cerdanya,Prats i Sansor,252
+Cerdanya,Prullans,270
+Cerdanya,Riu de Cerdanya,96
+Conca de Barberà,Barberà de la Conca,486
+Conca de Barberà,Blancafort,392
+Conca de Barberà,Conesa,113
+"Conca de Barberà","Espluga de Francolí, l'",3892
+Conca de Barberà,Forès,39
+Conca de Barberà,Llorac,105
+Conca de Barberà,Montblanc,7568
+Conca de Barberà,Passanant i Belltall,149
+"Conca de Barberà","Piles, les",228
+Conca de Barberà,Pira,512
+Conca de Barberà,Rocafort de Queralt,246
+Conca de Barberà,Santa Coloma de Queralt,2832
+Conca de Barberà,Pontils,123
+Conca de Barberà,Sarral,1647
+Conca de Barberà,Savallà del Comtat,49
+Conca de Barberà,Senan,47
+Conca de Barberà,Solivella,639
+Conca de Barberà,Vallclara,91
+Conca de Barberà,Vallfogona de Riucorb,97
+Conca de Barberà,Vilanova de Prades,110
+Conca de Barberà,Vilaverd,494
+Conca de Barberà,Vimbodí i Poblet,889
+Garraf,Canyelles,5494
+Garraf,Cubelles,17648
+Garraf,Olivella,4473
+Garraf,Sant Pere de Ribes,32613
+Garraf,Sitges,32690
+Garraf,Vilanova i la Geltrú,71305
+"Garrigues","Albagés, l'",339
+"Garrigues","Albi, l'",764
+Garrigues,Arbeca,2166
+Garrigues,Bovera,252
+"Garrigues","Borges Blanques, les",6458
+Garrigues,Castelldans,955
+Garrigues,Cervià de les Garrigues,637
+"Garrigues","Cogul, el",162
+"Garrigues","Espluga Calba, l'",324
+"Garrigues","Floresta, la",159
+Garrigues,Fulleda,87
+"Garrigues","Granadella, la",751
+Garrigues,Granyena de les Garrigues,174
+Garrigues,Juncosa,379
+Garrigues,Juneda,3523
+"Garrigues","Omellons, els",187
+"Garrigues","Pobla de Cérvoles, la",208
+Garrigues,Bellaguarda,287
+Garrigues,Puiggròs,270
+"Garrigues","Soleràs, el",313
+Garrigues,Tarrés,125
+"Garrigues","Torms, els",135
+"Garrigues","Vilosell, el",178
+Garrigues,Vinaixa,435
+Garrotxa,Argelaguer,467
+Garrotxa,Besalú,2591
+Garrotxa,Beuda,202
+Garrotxa,Castellfollit de la Roca,960
+Garrotxa,Maià de Montcal,498
+Garrotxa,Mieres,368
+Garrotxa,Montagut i Oix,1014
+Garrotxa,Olot,39516
+"Garrotxa","Planes d'Hostoles, les",1747
+"Garrotxa","Preses, les",1946
+Garrotxa,Riudaura,526
+Garrotxa,Sales de Llierca,164
+Garrotxa,Sant Feliu de Pallerols,1658
+Garrotxa,Sant Ferriol,248
+Garrotxa,Sant Jaume de Llierca,861
+Garrotxa,Sant Aniol de Finestres,381
+Garrotxa,Santa Pau,1578
+Garrotxa,Sant Joan les Fonts,3159
+Garrotxa,Tortellà,848
+"Garrotxa","Vall d'en Bas, la",3265
+"Garrotxa","Vall de Bianya, la",1342
+Gironès,Aiguaviva,805
+Gironès,Bescanó,5087
+Gironès,Bordils,1824
+Gironès,Campllong,534
+Gironès,Canet d'Adri,742
+Gironès,Cassà de la Selva,11167
+Gironès,Celrà,5613
+Gironès,Cervià de Ter,1030
+Gironès,Flaçà,1174
+Gironès,Fornells de la Selva,2813
+Gironès,Girona,108352
+Gironès,Juià,320
+Gironès,Llagostera,9579
+Gironès,Llambilles,732
+Gironès,Madremanya,277
+Gironès,Quart,4161
+Gironès,Salt,34603
+Gironès,Sant Andreu Salou,163
+Gironès,Sant Gregori,4187
+Gironès,Sant Jordi Desvalls,881
+Gironès,Sant Joan de Mollet,536
+Gironès,Sant Julià de Ramis,3702
+Gironès,Sant Martí de Llémena,727
+Gironès,Sant Martí Vell,270
+Gironès,Sarrià de Ter,5404
+Gironès,Vilablareix,4079
+Gironès,Viladasens,205
+Lluçanès,Alpens,267
+Lluçanès,Lluçà,280
+Lluçanès,Olost,1204
+Lluçanès,Oristà,556
+Lluçanès,Perafita,433
+Lluçanès,Prats de Lluçanès,2759
+Lluçanès,Sant Martí d'Albars,135
+Lluçanès,Sobremunt,89
+Maresme,Alella,10251
+Maresme,Arenys de Mar,16982
+Maresme,Arenys de Munt,9527
+Maresme,Argentona,12891
+Maresme,Cabrera de Mar,5053
+Maresme,Cabrils,7755
+Maresme,Caldes d'Estrac,3348
+Maresme,Calella,20775
+Maresme,Canet de Mar,15191
+Maresme,Dosrius,6307
+Maresme,Malgrat de Mar,19630
+"Maresme","Masnou, el",24727
+Maresme,Mataró,131370
+Maresme,Montgat,12835
+Maresme,Òrrius,814
+Maresme,Palafolls,10026
+Maresme,Pineda de Mar,30071
+Maresme,Premià de Mar,29348
+Maresme,Sant Iscle de Vallalta,1482
+Maresme,Sant Andreu de Llavaneres,11910
+Maresme,Sant Cebrià de Vallalta,3855
+Maresme,Vilassar de Dalt,9433
+Maresme,Vilassar de Mar,21234
+Maresme,Premià de Dalt,10601
+Maresme,Sant Pol de Mar,5778
+Maresme,Santa Susanna,4049
+Maresme,Sant Vicenç de Montalt,6829
+Maresme,Teià,6894
+Maresme,Tiana,9362
+Maresme,Tordera,19047
+Moianès,Calders,1121
+Moianès,Castellcir,802
+Moianès,Castellterçol,2742
+Moianès,Collsuspina,390
+"Moianès","Estany, l'",391
+Moianès,Granera,83
+Moianès,Monistrol de Calders,764
+Moianès,Moià,6807
+Moianès,Sant Quirze Safaja,664
+Moianès,Santa Maria d'Oló,1100
+Montsià,Alcanar,10048
+Montsià,Amposta,23047
+"Montsià","Sénia, la",5605
+Montsià,Freginals,445
+"Montsià","Galera, la",731
+Montsià,Godall,600
+Montsià,Mas de Barberans,535
+Montsià,Masdenverge,1145
+"Montsià","Ràpita, la",16230
+Montsià,Santa Bàrbara,3866
+Montsià,Ulldecona,6814
+Montsià,Sant Jaume d'Enveja,3759
+Noguera,Àger,635
+Noguera,Albesa,1582
+Noguera,Algerri,424
+Noguera,Alòs de Balaguer,117
+Noguera,Artesa de Segre,3594
+"Noguera","Sentiu de Sió, la",448
+"Noguera","Avellanes i Santa Linya, les",434
+Noguera,Balaguer,17667
+"Noguera","Baronia de Rialb, la",216
+Noguera,Bellcaire d'Urgell,1272
+Noguera,Bellmunt d'Urgell,174
+Noguera,Cabanabona,70
+Noguera,Camarasa,800
+Noguera,Castelló de Farfanya,548
+Noguera,Cubells,354
+Noguera,Foradada,194
+Noguera,Ivars de Noguera,318
+Noguera,Menàrguens,802
+Noguera,Montgai,643
+Noguera,Oliola,192
+Noguera,Os de Balaguer,1094
+Noguera,Penelles,431
+Noguera,Ponts,2639
+Noguera,Preixens,399
+Noguera,Térmens,1345
+Noguera,Tiurana,69
+Noguera,Torrelameu,816
+Noguera,Vallfogona de Balaguer,2008
+Noguera,Vilanova de l'Aguda,194
+Noguera,Vilanova de Meià,478
+Osona,Aiguafreda,2569
+Osona,Balenyà,4007
+"Osona","Brull, el",297
+Osona,Calldetenes,2724
+Osona,Centelles,7860
+Osona,Folgueroles,2262
+Osona,Gurb,2738
+Osona,Malla,286
+Osona,Manlleu,21321
+"Osona","Masies de Roda, les",758
+"Osona","Masies de Voltregà, les",3345
+Osona,Muntanyola,700
+Osona,Montesquiu,1133
+Osona,Orís,352
+Osona,Roda de Ter,6948
+Osona,Sant Agustí de Lluçanès,106
+Osona,Sant Bartomeu del Grau,931
+Osona,Sant Boi de Lluçanès,600
+Osona,Sant Hipòlit de Voltregà,3649
+Osona,Sant Julià de Vilatorta,3336
+Osona,Sant Martí de Centelles,1261
+Osona,Sant Pere de Torelló,2607
+Osona,Sant Quirze de Besora,2163
+Osona,Sant Sadurní d'Osormort,86
+Osona,Santa Cecília de Voltregà,197
+Osona,Santa Eugènia de Berga,2350
+Osona,Santa Eulàlia de Riuprimer,1516
+Osona,Santa Maria de Besora,164
+"Osona","Esquirol, l'",2303
+Osona,Sant Vicenç de Torelló,2118
+Osona,Seva,3818
+Osona,Sora,225
+Osona,Tavèrnoles,354
+Osona,Taradell,6838
+Osona,Tavertet,128
+Osona,Tona,8513
+Osona,Torelló,15334
+Osona,Vic,50405
+Osona,Vilanova de Sau,325
+Osona,Rupit i Pruit,277
+Osona,Espinelves,262
+Osona,Vidrà,167
+Osona,Viladrau,1182
+Pallars Jussà,Abella de la Conca,162
+Pallars Jussà,Gavet de la Conca,257
+Pallars Jussà,Isona i Conca Dellà,1034
+Pallars Jussà,Llimiana,130
+Pallars Jussà,Conca de Dalt,439
+"Pallars Jussà","Pobla de Segur, la",3179
+Pallars Jussà,Salàs de Pallars,368
+Pallars Jussà,Sant Esteve de la Sarga,118
+Pallars Jussà,Sarroca de Bellera,111
+Pallars Jussà,Senterada,161
+Pallars Jussà,Talarn,559
+"Pallars Jussà","Torre de Cabdella, la",760
+Pallars Jussà,Tremp,6156
+Pallars Jussà,Castell de Mur,159
+Pallars Sobirà,Alins,270
+Pallars Sobirà,Alt Àneu,456
+Pallars Sobirà,Baix Pallars,350
+Pallars Sobirà,Espot,377
+Pallars Sobirà,Esterri d'Àneu,914
+Pallars Sobirà,Esterri de Cardós,63
+Pallars Sobirà,Farrera,120
+Pallars Sobirà,Lladorre,246
+Pallars Sobirà,Llavorsí,343
+Pallars Sobirà,Rialp,651
+Pallars Sobirà,Soriguera,449
+Pallars Sobirà,Sort,2287
+Pallars Sobirà,Tírvia,139
+Pallars Sobirà,Vall de Cardós,391
+"Pallars Sobirà","Guingueta d'Àneu, la",276
+Pla d'Urgell,Barbens,910
+Pla d'Urgell,Bell-lloc d'Urgell,2359
+Pla d'Urgell,Bellvís,2239
+Pla d'Urgell,Castellnou de Seana,733
+Pla d'Urgell,Fondarella,828
+Pla d'Urgell,Golmés,1914
+Pla d'Urgell,Ivars d'Urgell,1598
+Pla d'Urgell,Linyola,2755
+Pla d'Urgell,Miralcamp,1359
+Pla d'Urgell,Mollerussa,16016
+"Pla d'Urgell","Palau d'Anglesola, el",2225
+"Pla d'Urgell","Poal, el",648
+Pla d'Urgell,Sidamon,757
+Pla d'Urgell,Torregrossa,2285
+Pla d'Urgell,Vilanova de Bellpuig,1149
+Pla d'Urgell,Vila-sana,754
+"Pla de l'Estany",Banyoles,20887
+"Pla de l'Estany",Camós,700
+"Pla de l'Estany",Cornellà del Terri,2413
+"Pla de l'Estany",Crespià,253
+"Pla de l'Estany",Esponellà,444
+"Pla de l'Estany",Fontcoberta,1482
+"Pla de l'Estany",Palol de Revardit,463
+"Pla de l'Estany",Porqueres,4804
+"Pla de l'Estany",Sant Miquel de Campmajor,257
+"Pla de l'Estany",Serinyà,1227
+"Pla de l'Estany",Vilademuls,898
+Priorat,Bellmunt del Priorat,288
+"Priorat","Bisbal de Montsant, la",214
+Priorat,Cabacés,295
+Priorat,Capçanes,446
+Priorat,Cornudella de Montsant,1014
+Priorat,Falset,2892
+"Priorat","Figuera, la",116
+Priorat,Gratallops,227
+"Priorat","Guiamets, els",253
+"Priorat","Lloar, el",100
+Priorat,Margalef,110
+Priorat,Marçà,624
+"Priorat","Masroig, el",477
+"Priorat","Molar, el",301
+"Priorat","Morera de Montsant, la",154
+Priorat,Poboleda,345
+Priorat,Porrera,407
+Priorat,Pradell de la Teixeta,182
+"Priorat","Torre de Fontaubella, la",120
+Priorat,Torroja del Priorat,128
+Priorat,Ulldemolins,390
+"Priorat","Vilella Alta, la",130
+"Priorat","Vilella Baixa, la",202
+Ribera d'Ebre,Ascó,1594
+Ribera d'Ebre,Benissanet,1191
+Ribera d'Ebre,Flix,3342
+Ribera d'Ebre,Garcia,555
+Ribera d'Ebre,Ginestar,799
+Ribera d'Ebre,Miravet,701
+Ribera d'Ebre,Móra d'Ebre,5841
+Ribera d'Ebre,Móra la Nova,3365
+"Ribera d'Ebre","Palma d'Ebre, la",331
+Ribera d'Ebre,Rasquera,788
+Ribera d'Ebre,Riba-roja d'Ebre,1127
+Ribera d'Ebre,Tivissa,1657
+"Ribera d'Ebre","Torre de l'Espanyol, la",642
+Ribera d'Ebre,Vinebre,428
+Ripollès,Campdevànol,3240
+Ripollès,Campelles,163
+Ripollès,Camprodon,2560
+Ripollès,Queralbs,202
+Ripollès,Gombrèn,206
+Ripollès,Llanars,517
+"Ripollès","Llosses, les",197
+Ripollès,Molló,350
+Ripollès,Ogassa,222
+Ripollès,Pardines,168
+Ripollès,Planoles,313
+Ripollès,Ribes de Freser,1839
+Ripollès,Ripoll,10812
+Ripollès,Sant Joan de les Abadesses,3393
+Ripollès,Vallfogona de Ripollès,223
+Ripollès,Sant Pau de Segúries,719
+Ripollès,Setcases,196
+Ripollès,Toses,198
+Ripollès,Vilallonga de Ter,396
+Segarra,Cervera,9630
+Segarra,Estaràs,161
+Segarra,Granyanella,154
+Segarra,Granyena de Segarra,149
+Segarra,Guissona,7715
+Segarra,Ivorra,101
+Segarra,Massoteres,226
+Segarra,Montoliu de Segarra,182
+Segarra,Montornès de Segarra,87
+"Segarra","Oluges, les",167
+Segarra,Sanaüja,388
+Segarra,Sant Guim de Freixenet,1233
+Segarra,Sant Ramon,483
+Segarra,Sant Guim de la Plana,192
+Segarra,Talavera,281
+Segarra,Tarroja de Segarra,163
+Segarra,Ribera d'Ondara,436
+Segarra,Torrefeta i Florejacs,593
+"Segarra","Plans de Sió, els",512
+"Segrià","Alamús, els",837
+Segrià,Albatàrrec,2312
+Segrià,Alcanó,247
+Segrià,Alcarràs,10556
+Segrià,Alcoletge,3679
+Segrià,Alfarràs,2790
+Segrià,Alfés,284
+Segrià,Alguaire,3057
+Segrià,Almacelles,7197
+Segrià,Almatret,292
+Segrià,Almenar,3357
+Segrià,Alpicat,6556
+Segrià,Artesa de Lleida,1545
+Segrià,Aspa,232
+Segrià,Aitona,2575
+Segrià,Benavent de Segrià,1565
+Segrià,Corbins,1490
+"Segrià","Granja d'Escarp, la",994
+Segrià,Lleida,147369
+Segrià,Llardecans,444
+Segrià,Massalcoreig,589
+Segrià,Maials,945
+Segrià,Montoliu de Lleida,491
+"Segrià","Portella, la",730
+Segrià,Puigverd de Lleida,1416
+Segrià,Rosselló,3398
+Segrià,Sarroca de Lleida,383
+Segrià,Seròs,1922
+Segrià,Soses,1884
+Segrià,Sudanell,920
+Segrià,Sunyer,310
+Segrià,Torrebesses,280
+Segrià,Torrefarrera,4950
+Segrià,Torres de Segre,2295
+Segrià,Torre-serona,419
+Segrià,Vilanova de Segrià,1088
+Segrià,Vilanova de la Barca,1160
+Segrià,Gimenells i el Pla de la Font,1072
+Selva,Fogars de la Selva,1705
+Selva,Amer,2419
+Selva,Anglès,5904
+Selva,Arbúcies,6635
+Selva,Blanes,42446
+Selva,Breda,3964
+Selva,Brunyola i Sant Martí Sapresa,399
+Selva,Caldes de Malavella,8644
+Selva,Hostalric,4464
+Selva,Lloret de Mar,41944
+Selva,Massanes,881
+Selva,Maçanet de la Selva,8065
+Selva,Osor,429
+Selva,Riells i Viabrea,4627
+Selva,Riudarenes,2524
+Selva,Riudellots de la Selva,2121
+Selva,Sant Feliu de Buixalleu,883
+Selva,Sant Hilari Sacalm,6071
+Selva,Santa Coloma de Farners,14218
+"Selva","Cellera de Ter, la",2033
+Selva,Sils,6924
+Selva,Susqueda,103
+Selva,Tossa de Mar,6293
+Selva,Vidreres,8852
+Selva,Vilobí d'Onyar,3298
+Selva,Sant Julià del Llor i Bonmatí,1462
+Solsonès,Biosca,185
+Solsonès,Castellar de la Ribera,131
+Solsonès,Clariana de Cardener,160
+Solsonès,Guixers,125
+Solsonès,Lladurs,186
+Solsonès,Llobera,201
+"Solsonès","Molsosa, la",101
+Solsonès,Navès,297
+Solsonès,Odèn,230
+Solsonès,Olius,989
+"Solsonès","Coma i la Pedra, la",278
+Solsonès,Pinell de Solsonès,198
+Solsonès,Pinós,274
+Solsonès,Riner,270
+Solsonès,Sant Llorenç de Morunys,982
+Solsonès,Solsona,9741
+Solsonès,Torà,1230
+Tarragonès,Altafulla,5856
+"Tarragonès","Catllar, el",5387
+Tarragonès,Constantí,7155
+Tarragonès,Creixell,4244
+"Tarragonès","Morell, el",3811
+"Tarragonès","Nou de Gaià, la",602
+"Tarragonès","Pallaresos, els",5043
+Tarragonès,Perafort,1353
+"Tarragonès","Pobla de Mafumet, la",4187
+"Tarragonès","Pobla de Montornès, la",3470
+Tarragonès,Renau,165
+"Tarragonès","Riera de Gaià, la",1831
+Tarragonès,Roda de Berà,8240
+Tarragonès,Salomó,525
+"Tarragonès","Secuita, la",1848
+Tarragonès,Tarragona,143260
+Tarragonès,Torredembarra,18190
+Tarragonès,Vespella de Gaià,502
+Tarragonès,Vilallonga del Camp,2494
+Tarragonès,Vila-seca,24158
+Tarragonès,Salou,31018
+"Tarragonès","Canonja, la",5993
+Terra Alta,Arnes,460
+Terra Alta,Batea,1873
+Terra Alta,Bot,545
+Terra Alta,Caseres,250
+Terra Alta,Corbera d'Ebre,1024
+"Terra Alta","Fatarella, la",841
+Terra Alta,Gandesa,3151
+Terra Alta,Horta de Sant Joan,1156
+"Terra Alta","Pinell de Brai, el",948
+"Terra Alta","Pobla de Massaluca, la",344
+Terra Alta,Prat de Comte,180
+Terra Alta,Vilalba dels Arcs,613
+Urgell,Agramunt,5638
+Urgell,Anglesola,1395
+Urgell,Belianes,512
+Urgell,Bellpuig,5531
+Urgell,Castellserà,987
+Urgell,Ciutadilla,186
+"Urgell","Fuliola, la",1277
+Urgell,Guimerà,253
+Urgell,Maldà,240
+Urgell,Nalec,91
+"Urgell","Omells de na Gaia, els",126
+Urgell,Ossó de Sió,200
+Urgell,Preixana,400
+Urgell,Puigverd d'Agramunt,239
+Urgell,Tàrrega,18991
+Urgell,Tornabous,828
+Urgell,Vallbona de les Monges,224
+Urgell,Verdú,874
+Urgell,Vilagrassa,627
+Urgell,Sant Martí de Riucorb,675
+Vallès Occidental,Castellar del Vallès,25395
+Vallès Occidental,Castellbisbal,13058
+Vallès Occidental,Gallifa,171
+Vallès Occidental,Matadepera,9808
+Vallès Occidental,Montcada i Reixac,37446
+Vallès Occidental,Palau-solità i Plegamans,15584
+Vallès Occidental,Polinyà,8572
+Vallès Occidental,Rellinars,928
+Vallès Occidental,Ripollet,39773
+Vallès Occidental,Rubí,82825
+Vallès Occidental,Sabadell,224589
+Vallès Occidental,Sant Cugat del Vallès,97959
+Vallès Occidental,Sant Llorenç Savall,2591
+Vallès Occidental,Sant Quirze del Vallès,20175
+Vallès Occidental,Barberà del Vallès,34031
+Vallès Occidental,Santa Perpètua de Mogoda,26101
+Vallès Occidental,Cerdanyola del Vallès,58264
+Vallès Occidental,Sentmenat,9528
+Vallès Occidental,Terrassa,232676
+Vallès Occidental,Ullastrell,2170
+Vallès Occidental,Vacarisses,7710
+Vallès Occidental,Viladecavalls,7816
+Vallès Occidental,Badia del Vallès,13058
+"Vallès Oriental","Ametlla del Vallès, l'",9473
+Vallès Oriental,Bigues i Riells del Fai,10124
+Vallès Oriental,Caldes de Montbui,18554
+Vallès Oriental,Campins,588
+Vallès Oriental,Canovelles,17445
+Vallès Oriental,Cànoves i Samalús,3393
+Vallès Oriental,Cardedeu,19050
+Vallès Oriental,Fogars de Montclús,493
+"Vallès Oriental","Franqueses del Vallès, les",20855
+"Vallès Oriental","Garriga, la",17386
+Vallès Oriental,Granollers,65123
+Vallès Oriental,Gualba,1753
+"Vallès Oriental","Llagosta, la",13254
+Vallès Oriental,Llinars del Vallès,10931
+Vallès Oriental,Lliçà d'Amunt,16519
+Vallès Oriental,Lliçà de Vall,6891
+Vallès Oriental,Martorelles,4987
+Vallès Oriental,Mollet del Vallès,52759
+Vallès Oriental,Figaró-Montmany,1187
+Vallès Oriental,Montmeló,8868
+Vallès Oriental,Montornès del Vallès,17062
+Vallès Oriental,Montseny,387
+Vallès Oriental,Parets del Vallès,18899
+"Vallès Oriental","Roca del Vallès, la",11021
+Vallès Oriental,Sant Antoni de Vilamajor,6722
+Vallès Oriental,Sant Celoni,18916
+Vallès Oriental,Sant Esteve de Palautordera,3099
+Vallès Oriental,Sant Fost de Campsentelles,9400
+Vallès Oriental,Sant Feliu de Codines,6821
+Vallès Oriental,Sant Pere de Vilamajor,5069
+Vallès Oriental,Santa Eulàlia de Ronçana,7955
+Vallès Oriental,Santa Maria de Martorelles,867
+Vallès Oriental,Santa Maria de Palautordera,10060
+Vallès Oriental,Tagamanent,329
+Vallès Oriental,Vallgorguina,3273
+Vallès Oriental,Vallromanes,2782
+Vallès Oriental,Vilalba Sasserra,790
+Vallès Oriental,Vilanova del Vallès,5697`;
+
+// Parse CSV
+const rows = d3.csvParse(csvData, d => ({
+  comarca: d.comarca,
+  municipality: d.municipality,
+  population: +d.population
+}));
+
+// Build hierarchy
+const byComarca = d3.group(rows, d => d.comarca);
+const hierarchyData = {
+  name: "Catalunya",
+  children: Array.from(byComarca, ([comarca, municipis]) => ({
+    name: comarca,
+    children: municipis.map(m => ({ name: m.municipality, value: m.population }))
+  }))
+};
+
+// Layout
+const container = document.getElementById("chart");
+const width = container.parentElement.clientWidth - 28;
+const height = Math.round(width * 0.62);
+
+// 43 colors — mix of qualitative palettes
+const palette = [
+  "#e63946","#457b9d","#2a9d8f","#e9c46a","#f4a261","#264653","#6a4c93",
+  "#1982c4","#8ac926","#ff595e","#6a994e","#bc4749","#3d405b","#81b29a",
+  "#f2cc8f","#e07a5f","#3d6b8e","#f8961e","#90be6d","#577590","#43aa8b",
+  "#4d908e","#277da1","#f3722c","#f9c74f","#90dbf4","#b5e48c","#d9ed92",
+  "#99d98c","#76c893","#52b69a","#168aad","#1a759f","#1e6091","#184e77",
+  "#7b2d8b","#c77dff","#e9d8a6","#94d2bd","#0a9396","#ee9b00","#ca6702","#bb3e03"
+];
+
+const comarcaList = [...byComarca.keys()].sort();
+const colorOf = c => palette[comarcaList.indexOf(c) % palette.length];
+
+const svg = d3.select("#chart").append("svg")
+  .attr("width", width).attr("height", height);
+
+const root = d3.hierarchy(hierarchyData)
+  .sum(d => d.value)
+  .sort((a, b) => b.value - a.value);
+
+d3.treemap()
+  .size([width, height])
+  .paddingOuter(2)
+  .paddingTop(14)
+  .paddingInner(1)(root);
+
+// Comarca backgrounds
+svg.selectAll(".cb")
+  .data(root.children)
+  .join("rect").attr("class","cb")
+  .attr("x", d => d.x0).attr("y", d => d.y0)
+  .attr("width", d => d.x1 - d.x0).attr("height", d => d.y1 - d.y0)
+  .attr("fill", d => colorOf(d.data.name)).attr("opacity", 0.15);
+
+// Comarca labels
+svg.selectAll(".cl")
+  .data(root.children)
+  .join("text").attr("class","cl")
+  .attr("x", d => d.x0 + 3).attr("y", d => d.y0 + 10)
+  .text(d => (d.x1 - d.x0) > 42 ? d.data.name : "")
+  .attr("font-size", d => (d.x1 - d.x0) > 110 ? "9.5px" : "7.5px")
+  .attr("font-weight", "700")
+  .attr("fill", d => colorOf(d.data.name))
+  .style("pointer-events","none");
+
+// Municipality rectangles
+const tooltip = document.getElementById("tooltip");
+
+svg.selectAll(".mr")
+  .data(root.leaves())
+  .join("rect").attr("class","mr")
+  .attr("x", d => d.x0).attr("y", d => d.y0)
+  .attr("width", d => d.x1 - d.x0).attr("height", d => d.y1 - d.y0)
+  .attr("fill", d => colorOf(d.parent.data.name))
+  .attr("opacity", 0.80).attr("rx", 1)
+  .style("cursor","pointer")
+  .on("mouseover", function(e, d) {
+    d3.select(this).attr("opacity", 1).attr("stroke","white").attr("stroke-width", 1.5);
+    const pop = d.data.value.toLocaleString("ca-ES");
+    tooltip.style.display = "block";
+    tooltip.innerHTML = `<strong>${d.data.name}</strong><br><span style="color:#aaa">${d.parent.data.name}</span><br>Població: <strong>${pop} hab.</strong>`;
+  })
+  .on("mousemove", function(e) {
+    tooltip.style.left = (e.clientX + 14) + "px";
+    tooltip.style.top = (e.clientY - 10) + "px";
+  })
+  .on("mouseout", function() {
+    d3.select(this).attr("opacity", 0.80).attr("stroke","none");
+    tooltip.style.display = "none";
+  });
+
+// Municipality labels (only where there's space)
+svg.selectAll(".ml")
+  .data(root.leaves())
+  .join("text").attr("class","ml")
+  .attr("x", d => d.x0 + 2).attr("y", d => d.y0 + 11)
+  .text(d => {
+    const w = d.x1 - d.x0, h = d.y1 - d.y0;
+    return (w > 32 && h > 14) ? d.data.name : "";
+  })
+  .attr("font-size", d => (d.x1 - d.x0) > 80 ? "9px" : "7px")
+  .attr("fill","white").attr("font-weight","500")
+  .style("pointer-events","none");
+
+// Legend
+const legendEl = document.getElementById("legend");
+comarcaList.forEach(c => {
+  const item = document.createElement("div");
+  item.className = "legend-item";
+  item.innerHTML = `<div class="legend-color" style="background:${colorOf(c)}"></div><span>${c}</span>`;
+  legendEl.appendChild(item);
+});
+</script>
+</body>
+</html>

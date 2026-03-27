@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marimekko — Mix d'Energia Elèctrica Europa 2023</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; padding: 24px; }
+  .header { margin-bottom: 16px; }
+  h1 { font-size: 22px; color: #1a1a2e; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: #555; line-height: 1.5; }
+  .source { font-size: 11px; color: #888; margin-top: 4px; }
+  #chart-container {
+    background: white;
+    border-radius: 10px;
+    padding: 20px 24px 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  }
+  .axis-label {
+    font-size: 12px;
+    fill: #555;
+    font-family: 'Segoe UI', Arial, sans-serif;
+  }
+  .axis-title {
+    font-size: 12px;
+    fill: #333;
+    font-weight: 600;
+    font-family: 'Segoe UI', Arial, sans-serif;
+  }
+  .tooltip {
+    position: fixed;
+    background: rgba(20,20,40,0.92);
+    color: white;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    pointer-events: none;
+    display: none;
+    z-index: 999;
+    line-height: 1.7;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #333;
+  }
+  .legend-color {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Marimekko — Mix d'Energia Elèctrica per País (Europa 2023)</h1>
+  <div class="subtitle">
+    <strong>Amplada de columna</strong> = producció elèctrica total del país (TWh) &nbsp;·&nbsp;
+    <strong>Alçada de segments</strong> = percentatge per font d'energia
+  </div>
+  <div class="source">Font: Fraunhofer ISE (DE), RTE (FR), REE (ES), Terna (IT), Ember (SE, PL) · 2023</div>
+</div>
+<div id="chart-container">
+  <div id="chart"></div>
+  <div class="legend" id="legend"></div>
+</div>
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+const countries = [
+  { name: "Alemanya",  flag: "🇩🇪", total: 428.5, wind: 32.6, solar: 14.0, hydro: 4.8,  biomass: 9.9,  other: 38.7 },
+  { name: "França",    flag: "🇫🇷", total: 469.6, wind: 10.8, solar: 4.6,  hydro: 12.5, biomass: 1.9,  other: 70.2 },
+  { name: "Espanya",   flag: "🇪🇸", total: 255.0, wind: 24.7, solar: 14.5, hydro: 10.1, biomass: 2.7,  other: 48.0 },
+  { name: "Itàlia",    flag: "🇮🇹", total: 264.0, wind: 8.9,  solar: 11.6, hydro: 15.8, biomass: 4.9,  other: 58.8 },
+  { name: "Suècia",    flag: "🇸🇪", total: 171.4, wind: 23.6, solar: 2.4,  hydro: 37.9, biomass: 6.7,  other: 29.5 },
+  { name: "Polònia",   flag: "🇵🇱", total: 151.0, wind: 14.6, solar: 8.7,  hydro: 1.2,  biomass: 1.4,  other: 74.0 }
+];
+
+const energySources = [
+  { key: "wind",    label: "Eòlica",      color: "#4cc9f0" },
+  { key: "solar",   label: "Solar",       color: "#ffd166" },
+  { key: "hydro",   label: "Hidràulica",  color: "#06d6a0" },
+  { key: "biomass", label: "Biomassa",    color: "#8ecae6" },
+  { key: "other",   label: "Altres/Nuclear/Fòssil", color: "#adb5bd" }
+];
+
+const container = document.getElementById("chart");
+const containerWidth = container.parentElement.clientWidth - 48;
+const margin = { top: 40, right: 20, bottom: 60, left: 55 };
+const width = containerWidth - margin.left - margin.right;
+const height = 420;
+
+const svg = d3.select("#chart")
+  .append("svg")
+  .attr("width", containerWidth)
+  .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+  .attr("transform", `translate(${margin.left},${margin.top})`);
+
+// Total TWh across all countries
+const totalTWh = d3.sum(countries, d => d.total);
+
+// Compute x positions and widths
+let cumX = 0;
+countries.forEach(d => {
+  d.x = (cumX / totalTWh) * width;
+  d.w = (d.total / totalTWh) * width;
+  cumX += d.total;
+});
+
+// Y scale: 0-100%
+const yScale = d3.scaleLinear().domain([0, 100]).range([height, 0]);
+
+// X axis (TWh labels)
+const xAxis = svg.append("g")
+  .attr("transform", `translate(0, ${height})`);
+
+xAxis.append("line")
+  .attr("x1", 0).attr("x2", width)
+  .attr("stroke", "#ccc").attr("stroke-width", 1);
+
+countries.forEach(d => {
+  xAxis.append("text")
+    .attr("x", d.x + d.w / 2)
+    .attr("y", 20)
+    .attr("text-anchor", "middle")
+    .attr("class", "axis-label")
+    .text(`${d.flag} ${d.name}`);
+  xAxis.append("text")
+    .attr("x", d.x + d.w / 2)
+    .attr("y", 36)
+    .attr("text-anchor", "middle")
+    .attr("class", "axis-label")
+    .attr("fill", "#888")
+    .text(`${d.total} TWh`);
+});
+
+// X axis title
+svg.append("text")
+  .attr("x", width / 2)
+  .attr("y", height + 56)
+  .attr("text-anchor", "middle")
+  .attr("class", "axis-title")
+  .text("← Producció elèctrica total (TWh) — L'amplada de cada columna és proporcional al total →");
+
+// Y axis
+const yAxis = d3.axisLeft(yScale)
+  .tickFormat(d => d + "%")
+  .ticks(5);
+
+svg.append("g")
+  .call(yAxis)
+  .selectAll("text")
+  .attr("class", "axis-label");
+
+svg.append("text")
+  .attr("transform", "rotate(-90)")
+  .attr("x", -height / 2)
+  .attr("y", -42)
+  .attr("text-anchor", "middle")
+  .attr("class", "axis-title")
+  .text("% per font d'energia");
+
+// Grid lines
+svg.selectAll(".grid-line")
+  .data([20, 40, 60, 80])
+  .join("line")
+  .attr("class", "grid-line")
+  .attr("x1", 0).attr("x2", width)
+  .attr("y1", d => yScale(d)).attr("y2", d => yScale(d))
+  .attr("stroke", "#eee").attr("stroke-width", 1);
+
+// Tooltip
+const tooltipEl = document.getElementById("tooltip");
+
+// Draw segments
+countries.forEach(country => {
+  let cumPct = 0;
+  energySources.forEach(source => {
+    const pct = country[source.key];
+    const y0 = yScale(cumPct + pct);
+    const y1 = yScale(cumPct);
+    cumPct += pct;
+
+    const rect = svg.append("rect")
+      .attr("x", country.x + 1)
+      .attr("y", y0)
+      .attr("width", country.w - 2)
+      .attr("height", y1 - y0)
+      .attr("fill", source.color)
+      .attr("opacity", 0.88)
+      .style("cursor", "pointer");
+
+    // Label inside segment if large enough
+    if ((y1 - y0) > 20 && country.w > 40) {
+      svg.append("text")
+        .attr("x", country.x + country.w / 2)
+        .attr("y", y0 + (y1 - y0) / 2 + 4)
+        .attr("text-anchor", "middle")
+        .attr("font-size", (y1 - y0) > 28 ? "11px" : "9px")
+        .attr("fill", source.key === "other" ? "#333" : "rgba(0,0,0,0.7)")
+        .attr("font-weight", "600")
+        .attr("pointer-events", "none")
+        .text(`${pct}%`);
+    }
+
+    rect.on("mouseover", function(event) {
+      d3.select(this).attr("opacity", 1).attr("stroke", "white").attr("stroke-width", 1.5);
+      tooltipEl.style.display = "block";
+      tooltipEl.innerHTML = `<strong>${country.flag} ${country.name}</strong><br>${source.label}: <strong>${pct}%</strong><br>Total país: ${country.total} TWh`;
+    })
+    .on("mousemove", function(event) {
+      tooltipEl.style.left = (event.clientX + 14) + "px";
+      tooltipEl.style.top = (event.clientY - 10) + "px";
+    })
+    .on("mouseout", function() {
+      d3.select(this).attr("opacity", 0.88).attr("stroke", "none");
+      tooltipEl.style.display = "none";
+    });
+  });
+
+  // Column border
+  svg.append("rect")
+    .attr("x", country.x + 1)
+    .attr("y", 0)
+    .attr("width", country.w - 2)
+    .attr("height", height)
+    .attr("fill", "none")
+    .attr("stroke", "white")
+    .attr("stroke-width", 2)
+    .attr("pointer-events", "none");
+});
+
+// Legend
+const legendEl = document.getElementById("legend");
+energySources.forEach(s => {
+  const item = document.createElement("div");
+  item.className = "legend-item";
+  item.innerHTML = `<div class="legend-color" style="background:${s.color}"></div><span>${s.label}</span>`;
+  legendEl.appendChild(item);
+});
+</script>
+</body>
+</html>

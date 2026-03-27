@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Icon Chart — Medalles Olímpiques París 2024</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; padding: 24px; }
+  .header { margin-bottom: 16px; }
+  h1 { font-size: 22px; color: #1a1a2e; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: #555; line-height: 1.5; }
+  .source { font-size: 11px; color: #888; margin-top: 4px; }
+  #chart-container {
+    background: white;
+    border-radius: 10px;
+    padding: 24px 28px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  }
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #eee;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #333;
+    font-weight: 500;
+  }
+  .medal-circle {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .gold { background: radial-gradient(circle at 35% 35%, #ffe066, #c89a00); }
+  .silver { background: radial-gradient(circle at 35% 35%, #f0f0f0, #9e9e9e); }
+  .bronze { background: radial-gradient(circle at 35% 35%, #e8b88a, #8b5e3c); }
+
+  .country-row {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    gap: 12px;
+  }
+  .country-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 180px;
+    padding-top: 4px;
+  }
+  .flag { font-size: 24px; line-height: 1; }
+  .country-name { font-size: 13px; font-weight: 600; color: #222; }
+  .rank { font-size: 11px; color: #999; }
+  .icons-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    max-width: 640px;
+  }
+  .medal-icon {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    display: inline-block;
+    transition: transform 0.1s;
+    cursor: default;
+    position: relative;
+  }
+  .medal-icon:hover { transform: scale(1.4); z-index: 10; }
+  .separator {
+    width: 1px;
+    height: 15px;
+    background: #ddd;
+    display: inline-block;
+    margin: 0 4px;
+    vertical-align: middle;
+    align-self: center;
+    flex-shrink: 0;
+  }
+  .total-badge {
+    font-size: 12px;
+    color: #666;
+    font-weight: 600;
+    align-self: center;
+    white-space: nowrap;
+    margin-left: 4px;
+  }
+  .tooltip {
+    position: fixed;
+    background: rgba(20,20,40,0.92);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    pointer-events: none;
+    display: none;
+    z-index: 999;
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Icon Chart — Medalles Olímpiques París 2024</h1>
+  <div class="subtitle">Cada cercle representa 1 medalla. Comparació del top 10 de països per total de medalles d'or.</div>
+  <div class="source">Font: Wikipedia — 2024 Summer Olympics medal table · Olympics.com</div>
+</div>
+<div id="chart-container">
+  <div class="legend-row">
+    <div class="legend-item"><span class="medal-circle gold"></span> Or</div>
+    <div class="legend-item"><span class="medal-circle silver"></span> Plata</div>
+    <div class="legend-item"><span class="medal-circle bronze"></span> Bronze</div>
+    <div style="margin-left:auto; font-size:12px; color:#999;">Cada ⬤ = 1 medalla</div>
+  </div>
+  <div id="chart"></div>
+</div>
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+const data = [
+  { rank: 1,  country: "Estats Units",  flag: "🇺🇸", gold: 40, silver: 44, bronze: 42, total: 126 },
+  { rank: 2,  country: "Xina",          flag: "🇨🇳", gold: 40, silver: 27, bronze: 24, total: 91  },
+  { rank: 3,  country: "Japó",          flag: "🇯🇵", gold: 20, silver: 12, bronze: 13, total: 45  },
+  { rank: 4,  country: "Austràlia",     flag: "🇦🇺", gold: 18, silver: 19, bronze: 16, total: 53  },
+  { rank: 5,  country: "França",        flag: "🇫🇷", gold: 16, silver: 26, bronze: 22, total: 64  },
+  { rank: 6,  country: "Països Baixos", flag: "🇳🇱", gold: 15, silver: 7,  bronze: 12, total: 34  },
+  { rank: 7,  country: "Gran Bretanya", flag: "🇬🇧", gold: 14, silver: 22, bronze: 29, total: 65  },
+  { rank: 8,  country: "Corea del Sud", flag: "🇰🇷", gold: 13, silver: 9,  bronze: 10, total: 32  },
+  { rank: 9,  country: "Itàlia",        flag: "🇮🇹", gold: 12, silver: 13, bronze: 15, total: 40  },
+  { rank: 10, country: "Alemanya",      flag: "🇩🇪", gold: 12, silver: 13, bronze: 8,  total: 33  }
+];
+
+const tooltip = document.getElementById("tooltip");
+const chart = document.getElementById("chart");
+
+const typeLabels = { gold: "Or", silver: "Plata", bronze: "Bronze" };
+const typeClasses = { gold: "gold", silver: "silver", bronze: "bronze" };
+
+data.forEach(d => {
+  const row = document.createElement("div");
+  row.className = "country-row";
+
+  // Country label
+  const info = document.createElement("div");
+  info.className = "country-info";
+  info.innerHTML = `
+    <span class="flag">${d.flag}</span>
+    <div>
+      <div class="country-name">${d.country}</div>
+      <div class="rank">#${d.rank}</div>
+    </div>
+  `;
+  row.appendChild(info);
+
+  // Icons
+  const iconsGroup = document.createElement("div");
+  iconsGroup.className = "icons-group";
+
+  ["gold", "silver", "bronze"].forEach((type, idx) => {
+    if (idx > 0) {
+      const sep = document.createElement("div");
+      sep.className = "separator";
+      iconsGroup.appendChild(sep);
+    }
+    for (let i = 0; i < d[type]; i++) {
+      const icon = document.createElement("div");
+      icon.className = `medal-icon ${typeClasses[type]}`;
+      icon.addEventListener("mouseenter", function(e) {
+        tooltip.style.display = "block";
+        tooltip.textContent = `${d.country} · ${typeLabels[type]}: ${d[type]}`;
+      });
+      icon.addEventListener("mousemove", function(e) {
+        tooltip.style.left = (e.clientX + 12) + "px";
+        tooltip.style.top = (e.clientY - 8) + "px";
+      });
+      icon.addEventListener("mouseleave", function() {
+        tooltip.style.display = "none";
+      });
+      iconsGroup.appendChild(icon);
+    }
+  });
+
+  // Total
+  const totalBadge = document.createElement("div");
+  totalBadge.className = "total-badge";
+  totalBadge.textContent = `Total: ${d.total}`;
+  iconsGroup.appendChild(document.createElement("div")).className = "separator";
+  iconsGroup.appendChild(totalBadge);
+
+  row.appendChild(iconsGroup);
+  chart.appendChild(row);
+});
+</script>
+</body>
+</html>
