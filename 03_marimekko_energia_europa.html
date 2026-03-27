@@ -67,10 +67,6 @@
 <body>
 <div class="header">
   <h1>Marimekko — Mix d'Energia Elèctrica per País (Europa 2023)</h1>
-  <div class="subtitle">
-    <strong>Amplada de columna</strong> = producció elèctrica total del país (TWh) &nbsp;·&nbsp;
-    <strong>Alçada de segments</strong> = percentatge per font d'energia
-  </div>
   <div class="source">Font: Fraunhofer ISE (DE), RTE (FR), REE (ES), Terna (IT), Ember (SE, PL) · 2023</div>
 </div>
 <div id="chart-container">
@@ -154,7 +150,7 @@ svg.append("text")
   .attr("y", height + 56)
   .attr("text-anchor", "middle")
   .attr("class", "axis-title")
-  .text("← Producció elèctrica total (TWh) — L'amplada de cada columna és proporcional al total →");
+  .text("Producció elèctrica total (TWh)");
 
 // Y axis
 const yAxis = d3.axisLeft(yScale)
